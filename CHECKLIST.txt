@@ -1,0 +1,100 @@
+🎯 ANTES DE SUBIR A NETLIFY - CHECKLIST FINAL
+
+================================
+VERIFICA LOCALMENTE PRIMERO (5 MIN)
+================================
+
+Abre estos archivos en tu navegador y verifica:
+
+□ index.html
+  - ¿Se ve el carrusel?
+  - ¿Se ve el logo?
+  - ¿Funciona el menú lateral (≡)?
+  - ¿Se ve AESFACT foto?
+
+□ admin.html
+  - ¿Se ve el login?
+  - Email: root@gmail.com
+  - Contraseña: admin123
+  - ¿Funciona el login?
+
+□ news.html
+  - ¿Se cargan las noticias?
+  - ¿Se ven las imágenes?
+
+□ gallery.html
+  - ¿Se ve la galería?
+
+□ contact.html
+  - ¿Se ve el formulario?
+  - ¿Se ven los botones de redes sociales?
+
+□ about.html
+  - ¿Se ven misión, visión, valores?
+  - ¿Se ven los botones de recursos?
+
+================================
+VERIFICA LA CARPETA DEL PROYECTO
+================================
+
+En: e:\AESFACT - SITIO WEB\
+
+✓ Estos archivos DEBEN estar:
+  □ index.html
+  □ about.html
+  □ admin.html
+  □ contact.html
+  □ events.html
+  □ gallery.html
+  □ members.html
+  □ news.html
+  □ projects.html
+  □ services.html
+  □ initialize.html
+  □ diagnostico.html
+  □ README.md
+  □ TUTORIAL_DEPLOY.md
+  □ GUIA_RAPIDA_NETLIFY.md
+  □ netlify.toml
+  □ .gitignore
+
+✓ Estas CARPETAS deben estar:
+  □ css/ (con styles.css)
+  □ js/ (con app.js)
+  □ img/ (con Logo.jpg)
+
+✗ Estas CARPETAS NO deben estar:
+  □ usuario/ (debe estar vacía o eliminada)
+  □ node_modules/
+  □ .git/
+
+================================
+VERIFICA THAT ADMIN WORKS
+================================
+
+1. Abre admin.html
+2. Ingresa credenciales:
+   Email: root@gmail.com
+   Contraseña: admin123
+3. ¿Ves el panel admin?
+
+4. Agrega una noticia de prueba:
+   - Título: "Noticia de prueba"
+   - Descripción: "Esto es una prueba"
+   - Guarda
+
+5. ¿Aparece en news.html?
+6. ¿Aparece en el carrusel de index.html?
+
+Si TODO funciona ✅ = LISTO PARA NETLIFY
+
+================================
+¿LISTO?
+================================
+
+Si todos los checkboxes están marcados ✅,
+entonces tu sitio está 100% listo.
+
+Sigue la guía: GUIA_RAPIDA_NETLIFY.md
+
+¡Éxito! 🚀

@@ -1,0 +1,13 @@
+# Build settings
+node_modules/
+.env
+.DS_Store
+usuario/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Netlify
+.netlify/
