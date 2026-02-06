@@ -1,2 +1,1 @@
-# Redirect /admin.html requests to /admin.html  
-/admin           /admin.html   200
+# No redirection rules needed for static site
