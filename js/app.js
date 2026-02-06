@@ -115,7 +115,7 @@
 
     // AESFACT (imagen y año)
     const aesYearEl = document.getElementById('aesfact-year'); if(aesYearEl){ if(aesYearEl.tagName==='INPUT' || aesYearEl.tagName==='TEXTAREA') aesYearEl.value = (d.aesfact && d.aesfact.year) || ''; else aesYearEl.textContent = (d.aesfact && d.aesfact.year) || ''; }
-    const aesImg = document.getElementById('aesfact-image'); if(aesImg){ aesImg.src = (d.aesfact && d.aesfact.image) || aesImg.src || 'https://via.placeholder.com/1280x720?text=AESFACT'; }
+    const aesImg = document.getElementById('aesfact-image'); if(aesImg){ const imgSrc = (d.aesfact && d.aesfact.image) || ''; aesImg.src = imgSrc || 'https://via.placeholder.com/1280x720/04293a/ffffff?text=AESFACT'; }
   }
 
   // --- Admin helpers: toasts and edit flows ---
