@@ -10,7 +10,35 @@ function initSupabase(){
   if(window.supabase && !supabase){
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log('Supabase initialized');
+    setupRealtimeSubscriptions();
   }
+}
+
+// Setup real-time subscriptions for live updates across devices
+function setupRealtimeSubscriptions(){
+  if(!supabase) return;
+
+  // Subscribe to all tables and update on changes
+  const tables = ['config', 'news', 'projects', 'events', 'members', 'services', 'gallery', 'aesfact'];
+  
+  tables.forEach(tableName => {
+    supabase
+      .channel(`public:${tableName}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
+        console.log(`Change detected on ${tableName}:`, payload);
+        // Re-render when any table changes
+        renderPublic();
+        // Also reload admin lists if we're on the admin page
+        if(document.getElementById('admin-panel') && !document.getElementById('admin-panel').classList.contains('hidden')){
+          loadAdminLists();
+        }
+      })
+      .subscribe((status) => {
+        if(status === 'SUBSCRIBED'){
+          console.log(`Subscribed to ${tableName} changes`);
+        }
+      });
+  });
 }
 
 // localStorage fallbacks for admin credentials
