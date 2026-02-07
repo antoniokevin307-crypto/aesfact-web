@@ -171,14 +171,8 @@ async function renderPublic() {
         return div;
     });
 
-    renderCardList('members-list', data.members, (m) => {
-        const div = document.createElement('div');
-        div.className = 'member-card';
-        const imgUrl = m.photo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Crect width='220' height='220' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3E👤%3C/text%3E%3C/svg%3E";
-        div.innerHTML = `<img src="${imgUrl}" onclick="openPhotoViewer('${imgUrl}')">
-                         <div><h4>${escapeHtml(m.name)}</h4><p class="muted">${escapeHtml(m.role)}</p><p>${escapeHtml(m.email)}</p><p class="muted">${escapeHtml(m.phone || '')}</p></div>`;
-        return div;
-    });
+    // Render members grouped by the requested quadrant hierarchy
+    renderMembersByRole(data.members);
 
     renderCardList('news-list', data.news, (n) => {
         const article = document.createElement('article');
@@ -567,4 +561,64 @@ function openPhotoViewer(src) {
     const pv = document.getElementById('photo-viewer');
     const img = document.getElementById('photo-viewer-img');
     if (pv && img) { img.src = src; pv.classList.add('open'); }
+}
+
+function renderMembersByRole(members) {
+    const container = document.getElementById('members-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const quadrants = [
+        { title: 'Presidente y Vicepresidenta', roles: ['Presidente', 'Presidenta', 'Vicepresidente', 'Vicepresidenta', 'Vicepresedenta'] },
+        { title: 'Logística', roles: ['Logistica', 'Logística'] },
+        { title: 'Publirrelacionista', roles: ['Publirrelacionista', 'Relaciones Públicas', 'Relaciones Publicas'] },
+        { title: 'Tesorería', roles: ['Tesorero', 'Tesorería', 'Tesorera'] },
+        { title: 'Secretaria', roles: ['Secretaria', 'Secretario'] },
+        { title: 'Vocales', roles: ['Vocal', 'Vocales'] },
+        { title: 'Colaboradores', roles: ['Colaborador', 'Colaboradores'] }
+    ];
+
+    // Helper to create member card (same structure used elsewhere)
+    const createCard = (m) => {
+        const div = document.createElement('div');
+        div.className = 'member-card';
+        const imgUrl = m.photo || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Crect width='220' height='220' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3E👤%3C/text%3E%3C/svg%3E";
+        div.innerHTML = `<img src="${imgUrl}" onclick="openPhotoViewer('${imgUrl}')">
+                         <div><h4>${escapeHtml(m.name)}</h4><p class="muted">${escapeHtml(m.role)}</p><p>${escapeHtml(m.email)}</p><p class="muted">${escapeHtml(m.phone || '')}</p></div>`;
+        return div;
+    };
+
+    // Normalize role lookup
+    const normalize = r => (r || '').trim().toLowerCase();
+    const usedIds = new Set();
+
+    quadrants.forEach((q, idx) => {
+        const qEl = document.createElement('section');
+        qEl.className = 'card quadrant';
+        qEl.innerHTML = `<h3>${q.title}</h3>`;
+        const grid = document.createElement('div');
+        grid.className = 'quadrant-grid';
+
+        const matched = members.filter(m => q.roles.map(normalize).includes(normalize(m.role)));
+        matched.forEach(m => { grid.appendChild(createCard(m)); usedIds.add(m.id); });
+
+        if (matched.length === 0) {
+            const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'No hay registros.'; grid.appendChild(p);
+        }
+
+        qEl.appendChild(grid);
+        container.appendChild(qEl);
+    });
+
+    // Append any members not matched into an "Otros" quadrant
+    const others = members.filter(m => !usedIds.has(m.id));
+    if (others.length) {
+        const qEl = document.createElement('section');
+        qEl.className = 'card quadrant';
+        qEl.innerHTML = `<h3>Otros</h3>`;
+        const grid = document.createElement('div'); grid.className = 'quadrant-grid';
+        others.forEach(m => grid.appendChild(createCard(m)));
+        qEl.appendChild(grid);
+        container.appendChild(qEl);
+    }
 }
