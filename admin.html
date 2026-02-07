@@ -6,13 +6,27 @@
   <title>Admin - AESFACT</title>
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.1"></script>
+  <style>
+    #search-mem, #proj-member-search {
+      border: 2px solid var(--blue-light);
+      background-color: #f0f8ff;
+      font-weight: 600;
+      color: var(--blue-accent);
+    }
+    .pulse-animation {
+      animation: pulse-blue 1.5s infinite;
+    }
+    @keyframes pulse-blue {
+      0% { box-shadow: 0 0 0 0 rgba(13, 93, 158, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(13, 93, 158, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(13, 93, 158, 0); }
+    }
+  </style>
 </head>
 <body class="admin">
   <div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Panel de Administración (Supabase)</h1>
-        <button id="logout-btn" class="btn muted">Salir</button>
-    </div>
+    
+    <h1 id="public-admin-title" style="text-align:center; margin-bottom: 20px;">Panel de Administración</h1>
 
     <div id="login-panel" class="card login-panel">
       <h2>Acceso Seguro</h2>
@@ -22,6 +36,11 @@
     </div>
 
     <div id="admin-panel" class="hidden">
+      <div class="admin-header-flex">
+        <h2 style="margin:0;">Dashboard</h2>
+        <button id="logout-btn" class="btn muted">Salir</button>
+      </div>
+
       <div class="admin-layout">
         <nav class="admin-nav">
           <a href="#sec-about">Nosotros</a>
@@ -64,20 +83,48 @@
           </section>
 
           <section id="sec-projects" class="admin-section card">
-            <h3>Proyectos</h3>
-            <input id="proj-title" placeholder="Título">
-            <textarea id="proj-desc" placeholder="Descripción"></textarea>
-            <input id="proj-date" type="date">
-            <select id="proj-status">
-                <option value="En curso">En curso</option>
-                <option value="Terminado">Terminado</option>
-                <option value="Cancelado">Cancelado</option>
-            </select>
-            <div class="admin-actions">
-                <button id="add-proj" class="btn">Agregar</button>
-                <button id="cancel-proj" class="btn muted hidden">Cancelar</button>
+            <h3>Gestión de Proyectos</h3>
+            <div style="display:grid; gap:15px;">
+                <div>
+                    <label class="muted">Información Básica</label>
+                    <input id="proj-title" placeholder="Título del Proyecto">
+                    <textarea id="proj-desc" placeholder="Descripción general..." rows="3"></textarea>
+                    <div style="display:flex; gap:10px;">
+                        <input id="proj-date" type="date" style="margin:0;">
+                        <select id="proj-status" style="margin:0;">
+                            <option value="En curso">En curso</option>
+                            <option value="Terminado">Terminado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="proj-feedback-section" class="hidden" style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #dee2e6;">
+                    <label id="proj-feedback-label" style="color:var(--blue-accent); font-weight:bold;">Conclusiones / Motivo</label>
+                    <textarea id="proj-feedback" placeholder="Escribe aquí los detalles..." rows="3"></textarea>
+                </div>
+                <div id="proj-participants-section" class="hidden" style="background:#f0f8ff; padding:15px; border-radius:8px; border:1px solid #cce5ff;">
+                    <label style="color:var(--blue-light); font-weight:bold;">Participantes del Proyecto</label>
+                    <div style="display:flex; gap:5px; margin-bottom:10px; position: relative;">
+                        <input id="proj-member-search" placeholder="🔍 Buscar miembro para añadir..." style="margin:0; flex:1;">
+                        <div id="proj-member-results" style="position:absolute; background:white; border:1px solid #ddd; max-height:150px; overflow-y:auto; width:100%; display:none; z-index:100; top:45px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1);"></div>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <input id="proj-external-name" placeholder="Nombre voluntario/externo" style="margin:0; flex:1;">
+                        <button id="proj-add-external" class="btn" style="padding:10px;">Añadir</button>
+                    </div>
+                    <div id="proj-participants-list" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;"></div>
+                </div>
+                <div>
+                    <label class="muted">Galería de Imágenes (Se añaden a las existentes)</label>
+                    <input id="proj-gallery-files" type="file" multiple accept="image/*">
+                    <div id="proj-gallery-preview" class="media-preview" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+                </div>
+                <div class="admin-actions" style="margin-top:15px;">
+                    <button id="add-proj" class="btn" style="width:100%;">Guardar Proyecto</button>
+                    <button id="cancel-proj" class="btn muted hidden" style="width:100%;">Cancelar Edición</button>
+                </div>
             </div>
-            <div id="proj-admin-list"></div>
+            <div id="proj-admin-list" style="margin-top:20px;"></div>
           </section>
 
           <section id="sec-events" class="admin-section card">
@@ -119,6 +166,10 @@
             <div class="admin-actions">
                 <button id="add-mem" class="btn">Agregar</button>
                 <button id="cancel-mem" class="btn muted hidden">Cancelar</button>
+            </div>
+            <div style="margin-top: 25px; margin-bottom: 10px;">
+                <label style="font-size: 0.9rem; color: var(--muted);">Filtrar lista:</label>
+                <input id="search-mem" placeholder="🔍 Buscar integrante por nombre..." style="margin-top: 5px;">
             </div>
             <div id="member-admin-list"></div>
           </section>
