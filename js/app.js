@@ -600,7 +600,7 @@ function renderMembersByRole(members) {
     const quadrants = [
         { title: 'Presidente y Vicepresidenta', roles: ['Presidente', 'Presidenta', 'Vicepresidente', 'Vicepresidenta', 'Vicepresedenta'] },
         { title: 'Logística', roles: ['Logistica', 'Logística'] },
-        { title: 'Publirrelacionista', roles: ['Publirrelacionista', 'Relaciones Públicas', 'Relaciones Publicas'] },
+        { title: 'Publirelacionista', roles: ['Publirelacionista', 'Relaciones Públicas', 'Relaciones Publicas'] },
         { title: 'Tesorería', roles: ['Tesorero', 'Tesorería', 'Tesorera'] },
         { title: 'Secretaria', roles: ['Secretaria', 'Secretario'] },
         { title: 'Vocales', roles: ['Vocal', 'Vocales'] },
