@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindSidebar();
     renderNav();
     bindContact();
+    bindNewsModal();
     
     // Inicializar Admin si estamos en la página correcta
     if (document.body.classList.contains('admin')) {
@@ -177,9 +178,37 @@ async function renderPublic() {
     renderCardList('news-list', data.news, (n) => {
         const article = document.createElement('article');
         article.className = 'card';
-        article.innerHTML = `<h4>${escapeHtml(n.title)}</h4><small>${n.date}</small>
-                             ${n.image ? `<img src="${n.image}" style="width:100%;border-radius:8px;margin:10px 0;max-height:300px;object-fit:cover">` : ''}
-                             <p>${escapeHtml(n.body)}</p>`;
+        const newsContent = document.createElement('div');
+        newsContent.className = 'news-content';
+        
+        if (n.image) {
+            const img = document.createElement('img');
+            img.src = n.image;
+            img.alt = 'Noticia';
+            article.appendChild(img);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.style.cssText = 'width:100%;height:200px;background:linear-gradient(135deg,#04293a,#0d5d9e);display:flex;align-items:center;justify-content:center;color:white;font-size:0.9rem;';
+            placeholder.textContent = 'Sin imagen';
+            article.appendChild(placeholder);
+        }
+        
+        newsContent.innerHTML = `
+            <h4>${escapeHtml(n.title)}</h4>
+            <small>${n.date}</small>
+            <p>${escapeHtml(n.body.substring(0, 120))}</p>
+        `;
+        
+        const readMoreLink = document.createElement('a');
+        readMoreLink.className = 'read-more';
+        readMoreLink.textContent = 'Leer más →';
+        readMoreLink.style.cursor = 'pointer';
+        readMoreLink.addEventListener('click', () => {
+            openNewsModal(n.title, n.date, n.body, n.image || '');
+        });
+        
+        newsContent.appendChild(readMoreLink);
+        article.appendChild(newsContent);
         return article;
     });
 
@@ -620,5 +649,45 @@ function renderMembersByRole(members) {
         others.forEach(m => grid.appendChild(createCard(m)));
         qEl.appendChild(grid);
         container.appendChild(qEl);
+    }
+}
+
+// ============================================================
+// MODAL DE NOTICIAS (EXPANDIR CONTENIDO)
+// ============================================================
+
+function openNewsModal(title, date, body, image) {
+    const modal = document.getElementById('news-modal');
+    const modalBody = document.getElementById('news-modal-body');
+    
+    if (!modal || !modalBody) return;
+    
+    modalBody.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:16px;">
+            ${image ? `<img src="${image}" style="width:100%;height:300px;object-fit:cover;border-radius:12px;box-shadow:0 8px 24px rgba(2,24,38,0.15);">` : '<div style="width:100%;height:300px;background:linear-gradient(135deg,#04293a,#0d5d9e);border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;">Sin imagen</div>'}
+            <div>
+                <h2 style="color:var(--blue-accent);margin:0 0 8px 0;font-size:1.8rem;line-height:1.3;">${escapeHtml(title)}</h2>
+                <small style="color:var(--accent);font-weight:600;font-size:0.95rem;">${date}</small>
+            </div>
+            <div style="color:var(--blue-accent);line-height:1.8;font-size:1rem;">
+                ${escapeHtml(body).replace(/\n/g, '<br>')}
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function closeNewsModal() {
+    const modal = document.getElementById('news-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function bindNewsModal() {
+    const modal = document.getElementById('news-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeNewsModal();
+        });
     }
 }
