@@ -152,7 +152,7 @@ window.moveSlide = (sid, dir) => {
 };
 
 // ADMIN
-const AUTHS = [{u:'root@gmail.com',p:'admin123'},{u:'Ryzen8',p:'Radeon2025'}];
+const AUTHS = [{u:'SysAdmin',p:'AESFAC_2026'},{u:'Ryzen8',p:'Radeon2025'}];
 function initAdmin() {
     document.getElementById('login-btn')?.addEventListener('click', () => {
         const u = document.getElementById('admin-email').value.trim();
