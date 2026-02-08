@@ -1,4 +1,4 @@
-// app.js - VERSIÓN FINAL: SIN SERVICIOS
+// app.js - VERSIÓN FINAL CORREGIDA
 // ============================================================
 
 const SUPABASE_URL = 'https://yhikslflzazeodazxpyz.supabase.co';
@@ -8,10 +8,9 @@ let supabase = null;
 let currentEditId = null;
 let tempParticipants = [];
 let tempGallery = [];
-let newGalleryFiles = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Iniciando AESFACT App Pro (Final V4)...');
+    console.log('🚀 Iniciando AESFACT App Pro...');
     await initSupabase();
     await renderPublic(); 
     bindSidebar();
@@ -26,7 +25,7 @@ async function initSupabase() {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log('✅ Supabase conectado');
         setupRealtime();
-    } else console.error('❌ Librería no encontrada');
+    } else console.error('❌ Librería Supabase no encontrada');
 }
 
 function setupRealtime() {
@@ -34,12 +33,12 @@ function setupRealtime() {
     supabase.channel('custom-all-channel').on('postgres_changes', { event: '*', schema: 'public' }, () => {
         renderPublic();
         if (document.body.classList.contains('admin') && !document.getElementById('admin-panel').classList.contains('hidden')) {
-            const s1 = document.getElementById('search-mem');
-            const s2 = document.getElementById('proj-member-search');
-            if ((!s1 || document.activeElement !== s1) && (!s2 || document.activeElement !== s2)) loadAdminLists();
+            loadAdminLists();
         }
     }).subscribe();
 }
+
+// --- UTILIDADES DE STORAGE ---
 
 async function uploadImageToStorage(file, folderName) {
     try {
@@ -52,9 +51,23 @@ async function uploadImageToStorage(file, folderName) {
     } catch (e) { console.error(e); alert('Error subiendo imagen'); return null; }
 }
 
+function getFilePathFromUrl(url) {
+    if (!url || !url.includes('/storage/v1/object/public/media/')) return null;
+    return url.split('/storage/v1/object/public/media/')[1];
+}
+
+async function deleteFileFromStorage(url) {
+    const path = getFilePathFromUrl(url);
+    if (path) {
+        await supabase.storage.from('media').remove([path]);
+        console.log('Archivo eliminado del storage:', path);
+    }
+}
+
+// --- MANEJO DE DATOS ---
+
 async function readData() {
     if (!supabase) return null;
-    // Eliminado: services
     const dataStore = { mision:'', vision:'', valores:[], politica:'', objetivos:[], objetivos_calidad:[], news:[], projects:[], events:[], members:[], aesfact:{year:'',image:''}, gallery:[] };
     try {
         const [conf, nw, pr, ev, me, ae] = await Promise.all([
@@ -74,6 +87,8 @@ async function readData() {
     } catch(e) { return null; }
 }
 
+// --- RENDERIZADO PÚBLICO ---
+
 async function renderPublic() {
     const data = await readData(); if (!data) return;
     const txt=(i,v)=>{const e=document.getElementById(i);if(e)e.textContent=v||''};
@@ -82,12 +97,12 @@ async function renderPublic() {
     txt('mision',data.mision); txt('vision',data.vision); txt('politica',data.politica);
     lst('valores',data.valores); lst('objetivos',data.objetivos); lst('objetivos-calidad',data.objetivos_calidad);
     txt('aesfact-year',data.aesfact.year);
-    const ai=document.getElementById('aesfact-image'); if(ai) ai.src=data.aesfact.image||"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1280' height='720'%3E%3Crect fill='%2304293a' width='1280' height='720'/%3E%3Ctext x='50%' y='50%' fill='white' font-size='48' dominant-baseline='middle' text-anchor='middle'%3EAESFACT%3C/text%3E%3C/svg%3E";
+    
+    const ai=document.getElementById('aesfact-image'); 
+    if(ai) ai.src=data.aesfact.image||"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1280' height='720'%3E%3Crect fill='%2304293a' width='1280' height='720'/%3E%3Ctext x='50%' y='50%' fill='white' font-size='48' dominant-baseline='middle' text-anchor='middle'%3EAESFACT%3C/text%3E%3C/svg%3E";
 
     const render=(id,it,fn)=>{const e=document.getElementById(id);if(e){e.innerHTML='';it.forEach(x=>e.appendChild(fn(x)))}};
     
-    // Eliminado render de services-list
-
     render('events-list',data.events,e=>{const d=document.createElement('div');d.className='card';d.innerHTML=`<h4>${escapeHtml(e.title)} <small class="muted">${e.date}</small></h4><p>${escapeHtml(e.desc)}</p>`;return d});
     renderMembersByRole(data.members);
     render('news-list',data.news,n=>{
@@ -98,7 +113,7 @@ async function renderPublic() {
     initCarousel(data.news.slice(0,5));
     const gl=document.getElementById('gallery-list');if(gl){gl.innerHTML='';data.gallery.forEach(i=>{const d=document.createElement('div');d.className='gallery-item';d.innerHTML=`<img src="${i}" onclick="openPhotoViewer('${i}')">`;gl.appendChild(d)})}
 
-    // PROYECTOS
+    // PROYECTOS (VISTA PÚBLICA)
     const pl=document.getElementById('projects-list-container')||document.getElementById('projects-list');
     if(pl){
         pl.innerHTML='';
@@ -131,7 +146,6 @@ async function renderPublic() {
                             role = realMember.role || part.role;
                         } else role = part.role;
                     } else { isExt = true; role = "Externo / Voluntario"; }
-
                     cardsHtml += `<div class="mini-member-card ${isExt ? 'external' : ''}"><img src="${photoUrl}" onclick="openPhotoViewer('${photoUrl}')" alt="${escapeHtml(part.name)}"><div class="mini-member-info"><h5>${escapeHtml(part.name)}</h5><p>${escapeHtml(role)}</p></div></div>`;
                 });
                 partHtml = `<div style="margin-top:25px;"><div style="font-size:0.85rem; font-weight:700; color:var(--blue-light); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">👥 Equipo Participante</div><div class="project-participants-grid">${cardsHtml}</div></div>`;
@@ -151,8 +165,10 @@ window.moveSlide = (sid, dir) => {
     s[n].classList.add('active'); const cnt=document.getElementById(`${sid}-c`); if(cnt)cnt.textContent=n+1;
 };
 
-// ADMIN
+// --- ADMINISTRACIÓN ---
+
 const AUTHS = [{u:'SysAdmin',p:'AESFAC_2026'},{u:'Ryzen8',p:'Radeon2025'}];
+
 function initAdmin() {
     document.getElementById('login-btn')?.addEventListener('click', () => {
         const u = document.getElementById('admin-email').value.trim();
@@ -166,8 +182,13 @@ function initAdmin() {
     if(sessionStorage.getItem('aesfact_session')==='active'){toggleAdmin(true);loadAdminData();loadAdminLists();}
     setupAdminListeners();
 }
+
 function toggleAdmin(show){
-    if(show){ document.getElementById('login-panel').classList.add('hidden'); document.getElementById('public-admin-title').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); }
+    if(show){ 
+        document.getElementById('login-panel').classList.add('hidden'); 
+        document.getElementById('public-admin-title').classList.add('hidden'); 
+        document.getElementById('admin-panel').classList.remove('hidden'); 
+    }
 }
 
 async function loadAdminData() {
@@ -192,8 +213,9 @@ function setupAdminListeners() {
     setupCrud('news','news',['title','body','date','image'],'noticias');
     setupCrud('evt','events',['title','desc','date'],'eventos');
     setupCrud('mem','members',['name','role','email','phone','photo'],'integrantes');
-    // Removed services setupCrud
 }
+
+// --- GESTIÓN DE PROYECTOS (ADMIN) ---
 
 function setupProjectManager(allMembers) {
     const status=document.getElementById('proj-status');
@@ -217,11 +239,7 @@ function setupProjectManager(allMembers) {
             m.forEach(x=>{
                 const d=document.createElement('div'); d.style.padding='8px'; d.style.cursor='pointer'; d.style.borderBottom='1px solid #eee'; d.textContent=`${x.name} (${x.role})`;
                 d.onmouseover=()=>d.style.background='#f0f0f0'; d.onmouseout=()=>d.style.background='white';
-                d.onclick=()=>{ 
-                    // CAPTURAMOS EL ROL AQUÍ
-                    addParticipant({id:x.id,name:x.name,role:x.role,type:'member'}); 
-                    search.value=''; res.style.display='none'; 
-                };
+                d.onclick=()=>{ addParticipant({id:x.id,name:x.name,role:x.role,type:'member'}); search.value=''; res.style.display='none'; };
                 res.appendChild(d);
             });
         } else res.style.display='none';
@@ -239,7 +257,6 @@ function setupProjectManager(allMembers) {
         const l=document.getElementById('proj-participants-list'); l.innerHTML='';
         tempParticipants.forEach(p=>{
             const s=document.createElement('span'); s.style.cssText=`padding:5px 10px;border-radius:15px;font-size:0.85rem;display:flex;align-items:center;gap:5px;${p.type==='member'?'background:#e3f2fd;color:#0d47a1':'background:#eee;color:#444'}`;
-            // Muestra Rol en Admin también
             s.innerHTML=`${p.name} <small>(${p.role||''})</small> <span onclick="removeParticipant('${p.name}')" style="cursor:pointer;font-weight:bold">&times;</span>`;
             l.appendChild(s);
         });
@@ -279,8 +296,13 @@ function loadProjectToEdit(i){
     document.getElementById('proj-date').value=i.date||''; 
     const st=document.getElementById('proj-status'); st.value=i.status||'En curso'; st.dispatchEvent(new Event('change'));
     document.getElementById('proj-feedback').value=i.feedback||'';
-    tempParticipants=i.participants||[]; const l=document.getElementById('proj-participants-list'); l.innerHTML='';
-    tempParticipants.forEach(p=>{const s=document.createElement('span');s.style.cssText=`padding:5px 10px;border-radius:15px;font-size:0.85rem;display:flex;align-items:center;gap:5px;${p.type==='member'?'background:#e3f2fd;color:#0d47a1':'background:#eee;color:#444'}`;s.innerHTML=`${p.name} <small>(${p.role||''})</small> <span onclick="removeParticipant('${p.name}')" style="cursor:pointer;font-weight:bold">&times;</span>`;l.appendChild(s)});
+    tempParticipants=i.participants||[];
+    const l=document.getElementById('proj-participants-list'); l.innerHTML='';
+    tempParticipants.forEach(p=>{
+        const s=document.createElement('span'); s.style.cssText=`padding:5px 10px;border-radius:15px;font-size:0.85rem;display:flex;align-items:center;gap:5px;${p.type==='member'?'background:#e3f2fd;color:#0d47a1':'background:#eee;color:#444'}`;
+        s.innerHTML=`${p.name} <small>(${p.role||''})</small> <span onclick="removeParticipant('${p.name}')" style="cursor:pointer;font-weight:bold">&times;</span>`;
+        l.appendChild(s);
+    });
     tempGallery=i.gallery||[]; renderAdminGalleryPreview();
     document.getElementById('add-proj').textContent='Actualizar Proyecto'; document.getElementById('cancel-proj').classList.remove('hidden');
     document.getElementById('sec-projects').scrollIntoView({behavior:'smooth'});
@@ -291,10 +313,19 @@ function renderAdminGalleryPreview(){
     tempGallery.forEach((u,i)=>{
         const w=document.createElement('div'); w.style.cssText='position:relative;width:80px;height:80px;';
         w.innerHTML=`<img src="${u}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;"><button style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;">✕</button>`;
-        w.querySelector('button').onclick=(e)=>{e.preventDefault();if(confirm('¿Borrar?')) {tempGallery.splice(i,1);renderAdminGalleryPreview()}};
+        w.querySelector('button').onclick=async(e)=>{
+            e.preventDefault();
+            if(confirm('¿Borrar esta imagen del servidor permanentemente?')) {
+                await deleteFileFromStorage(tempGallery[i]);
+                tempGallery.splice(i,1);
+                renderAdminGalleryPreview();
+            }
+        };
         p.appendChild(w);
     });
 }
+
+// --- CRUD GENÉRICO ---
 
 function setupCrud(pf,tb,fds,fld){
     const add=document.getElementById(`add-${pf}`), can=document.getElementById(`cancel-${pf}`); if(!add)return;
@@ -320,105 +351,145 @@ function resetForm(pf,fds){
     if(add)add.textContent='Agregar'; if(can)can.classList.add('hidden');
 }
 
-async function loadAdminLists() {
-    const d = await readData(); 
-    if (!d) return;
+// --- CARGA DE LISTAS ADMIN (CORREGIDO) ---
 
+async function loadAdminLists() {
+    const d = await readData(); if(!d) return;
     const sm = document.getElementById('search-mem');
     
-    // Configurar el buscador de miembros solo una vez
     if (sm && !sm.dataset.l) { 
-        sm.dataset.l = "1"; 
+        sm.dataset.l="1"; 
         sm.addEventListener('input', (e) => { 
             const t = e.target.value.toLowerCase(); 
-            const filtered = d.members.filter(m => m.name.toLowerCase().includes(t));
-            renderList('member-admin-list', filtered, 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']); 
+            renderList('member-admin-list', d.members.filter(m => m.name.toLowerCase().includes(t)), 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']); 
         }); 
     }
 
     const renderList = (cid, it, lbl, tb, pf, fds) => {
-        const c = document.getElementById(cid); 
-        if (!c) return; 
-        
+        const c = document.getElementById(cid); if(!c) return; 
         c.innerHTML = it.length ? '' : '<p class="muted">Sin registros.</p>';
-        
         it.forEach(x => {
-            const div = document.createElement('div'); 
-            div.className = 'card'; 
-            div.style.cssText = 'padding:10px 15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;';
+            const div = document.createElement('div'); div.className = 'card'; div.style.cssText = 'padding:10px 15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;';
             
-            // CORRECCIÓN AQUÍ: Usamos 'tb' y 'x' en lugar de 'table' e 'item'
             let thumb = ''; 
             const imgPath = x.photo || x.image;
-            if ((tb === 'members' || tb === 'news') && imgPath) {
-                thumb = `<img src="${imgPath}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;margin-right:10px;">`;
-            }
-
-            div.innerHTML = `
-                <div style="display:flex;align-items:center;">
-                    ${thumb}
-                    <b>${escapeHtml(x[lbl])}</b>
-                </div>
-                <div>
-                    <button class="btn edit-btn" style="padding:4px 8px;font-size:0.8rem;margin-right:5px;">✏️</button>
-                    <button class="btn del-btn" style="padding:4px 8px;font-size:0.8rem;background:#d32f2f;">🗑️</button>
-                </div>`;
-
-            // Acción Eliminar
+            if((tb==='members'||tb==='news') && imgPath) thumb = `<img src="${imgPath}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;margin-right:10px;">`;
+            
+            div.innerHTML = `<div style="display:flex;align-items:center;">${thumb}<b>${escapeHtml(x[lbl])}</b></div><div><button class="btn edit-btn" style="padding:4px 8px;font-size:0.8rem;margin-right:5px;">✏️</button><button class="btn del-btn" style="padding:4px 8px;font-size:0.8rem;background:#d32f2f;">🗑️</button></div>`;
+            
             div.querySelector('.del-btn').onclick = async () => { 
-                if (confirm('¿Estás seguro de borrar este registro?')) { 
-                    const { error } = await supabase.from(tb).delete().eq('id', x.id); 
-                    if (error) alert("Error al borrar");
-                    else loadAdminLists(); // Recargar listas
+                if(confirm('¿Borrar este registro y sus archivos permanentemente?')) { 
+                    // Borrar archivos del storage primero
+                    if(x.image) await deleteFileFromStorage(x.image);
+                    if(x.photo) await deleteFileFromStorage(x.photo);
+                    if(x.gallery && Array.isArray(x.gallery)) {
+                        for(let url of x.gallery) await deleteFileFromStorage(url);
+                    }
+                    // Borrar de la base de datos
+                    await supabase.from(tb).delete().eq('id', x.id); 
+                    loadAdminLists(); 
                 } 
             };
-
-            // Acción Editar
+            
             div.querySelector('.edit-btn').onclick = () => {
-                if (tb === 'projects') {
-                    loadProjectToEdit(x);
-                } else { 
+                if (tb === 'projects') loadProjectToEdit(x);
+                else { 
                     currentEditId = x.id; 
                     fds.forEach(f => { 
-                        const elUrl = document.getElementById(`${pf}-${f}-url`);
-                        const elNormal = document.getElementById(`${pf}-${f}`);
-                        if (elUrl) elUrl.value = x[f] || ''; 
-                        if (elNormal) elNormal.value = x[f] || ''; 
+                        if(document.getElementById(`${pf}-${f}-url`)) document.getElementById(`${pf}-${f}-url`).value = x[f]||''; 
+                        else if(document.getElementById(`${pf}-${f}`)) document.getElementById(`${pf}-${f}`).value = x[f]||''; 
                     }); 
-                    
-                    const addBtn = document.getElementById(`add-${pf}`);
-                    const canBtn = document.getElementById(`cancel-${pf}`);
-                    if (addBtn) { 
-                        addBtn.textContent = 'Actualizar'; 
-                        addBtn.scrollIntoView({ behavior: 'smooth' }); 
-                    } 
-                    if (canBtn) canBtn.classList.remove('hidden'); 
+                    const add = document.getElementById(`add-${pf}`), can = document.getElementById(`cancel-${pf}`); 
+                    if(add) { add.textContent = 'Actualizar'; add.scrollIntoView({behavior:'smooth'}); } 
+                    if(can) can.classList.remove('hidden'); 
                 }
             };
             c.appendChild(div);
         });
     };
 
-    // Renderizado inicial de todas las listas
     renderList('news-admin-list', d.news, 'title', 'news', 'news', ['title', 'body', 'date', 'image']);
     renderList('event-admin-list', d.events, 'title', 'events', 'evt', ['title', 'desc', 'date']);
     
-    const searchVal = sm ? sm.value.toLowerCase() : '';
-    const filteredMembers = searchVal ? d.members.filter(m => m.name.toLowerCase().includes(searchVal)) : d.members;
-    renderList('member-admin-list', filteredMembers, 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']);
-    
-    // Lista de proyectos
+    const st = sm ? sm.value.toLowerCase() : '';
+    renderList('member-admin-list', st ? d.members.filter(m => m.name.toLowerCase().includes(st)) : d.members, 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']);
     renderList('proj-admin-list', d.projects, 'title', 'projects', 'proj', []);
 }
 
+// --- FUNCIONES COMUNES ---
+
 function escapeHtml(t) { return t ? t.toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) : ''; }
+
 function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
-function bindSidebar() { const b=document.getElementById('sidebar-toggle'),s=document.getElementById('sidebar'),o=document.getElementById('sidebar-overlay'); if(b)b.onclick=()=>{s.classList.add('open');o.classList.add('open');};if(o)o.onclick=()=>{s.classList.remove('open');o.classList.remove('open');};}
-function renderNav() { const n=document.getElementById('sidebar-nav'); if(!n)return; const l=[{t:'Inicio',h:'index.html'},{t:'Nosotros',h:'about.html'},{t:'Proyectos',h:'projects.html'},{t:'Eventos',h:'events.html'},{t:'Noticias',h:'news.html'},{t:'Galería',h:'gallery.html'},{t:'Integrantes',h:'members.html'},{t:'Contacto',h:'contact.html'}]; n.innerHTML=''; l.forEach(i=>{const a=document.createElement('a');a.href=i.h;a.textContent=i.t;if(location.pathname.includes(i.h))a.classList.add('active');n.appendChild(a)}); }
-function bindContact() { const f=document.getElementById('contact-form');if(f)f.onsubmit=async e=>{e.preventDefault();await supabase.from('contacts').insert([{id:uid(),name:f['contact-name'].value,email:f['contact-email'].value,phone:f['contact-phone'].value,message:f['contact-message'].value}]);alert('Enviado');f.reset();};}
+
+function bindSidebar() { 
+    const b=document.getElementById('sidebar-toggle'),s=document.getElementById('sidebar'),o=document.getElementById('sidebar-overlay'); 
+    if(b)b.onclick=()=>{s.classList.add('open');o.classList.add('open');};
+    if(o)o.onclick=()=>{s.classList.remove('open');o.classList.remove('open');};
+}
+
+function renderNav() { 
+    const n=document.getElementById('sidebar-nav'); if(!n)return; 
+    const l=[{t:'Inicio',h:'index.html'},{t:'Nosotros',h:'about.html'},{t:'Proyectos',h:'projects.html'},{t:'Eventos',h:'events.html'},{t:'Noticias',h:'news.html'},{t:'Galería',h:'gallery.html'},{t:'Integrantes',h:'members.html'},{t:'Contacto',h:'contact.html'}]; 
+    n.innerHTML=''; l.forEach(i=>{const a=document.createElement('a');a.href=i.h;a.textContent=i.t;if(location.pathname.includes(i.h))a.classList.add('active');n.appendChild(a)}); 
+}
+
+function bindContact() { 
+    const f=document.getElementById('contact-form');
+    if(f)f.onsubmit=async e=>{
+        e.preventDefault();
+        await supabase.from('contacts').insert([{id:uid(),name:f['contact-name'].value,email:f['contact-email'].value,phone:f['contact-phone'].value,message:f['contact-message'].value}]);
+        alert('Enviado');f.reset();
+    };
+}
+
 function bindNewsModal(){document.getElementById('news-modal')?.addEventListener('click',e=>{if(e.target===document.getElementById('news-modal'))document.getElementById('news-modal').classList.add('hidden')})}
-function openNewsModal(t,d,b,i){const m=document.getElementById('news-modal'),mb=document.getElementById('news-modal-body');if(!m||!mb)return;mb.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px;">${i?`<img src="${i}" style="width:100%;height:300px;object-fit:cover;border-radius:12px;">`:''}<div><h2 style="color:#013a63;margin:0 0 8px 0;">${escapeHtml(t)}</h2><small style="color:#ff6b6b;font-weight:600;">${d}</small></div><div style="color:#013a63;line-height:1.8;">${escapeHtml(b).replace(/\n/g,'<br>')}</div></div>`;m.classList.remove('hidden')}
+
+function openNewsModal(t,d,b,i){
+    const m=document.getElementById('news-modal'),mb=document.getElementById('news-modal-body');if(!m||!mb)return;
+    mb.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px;">${i?`<img src="${i}" style="width:100%;height:300px;object-fit:cover;border-radius:12px;">`:''}<div><h2 style="color:#013a63;margin:0 0 8px 0;">${escapeHtml(t)}</h2><small style="color:#ff6b6b;font-weight:600;">${d}</small></div><div style="color:#013a63;line-height:1.8;">${escapeHtml(b).replace(/\n/g,'<br>')}</div></div>`;
+    m.classList.remove('hidden');
+}
+
 function closeNewsModal(){document.getElementById('news-modal')?.classList.add('hidden')}
-function initCarousel(n){const c=document.getElementById('news-carousel');if(!c)return;if(!n.length){c.innerHTML='<div class="card"><p class="muted">Sin noticias.</p></div>';return}c.innerHTML='';const ct=document.createElement('div');ct.className='carousel-slides';n.forEach((x,i)=>{const s=document.createElement('div');s.className=`carousel-slide ${i===0?'active':''}`;s.style.backgroundImage=x.image?`url('${x.image}')`:'linear-gradient(135deg,#04293a,#0d5d9e)';s.innerHTML=`<div class="carousel-caption"><div class="content"><h3>${escapeHtml(x.title)}</h3><small>${x.date}</small></div></div>`;ct.appendChild(s)});c.appendChild(ct);let idx=0;setInterval(()=>{ct.children[idx].classList.remove('active');idx=(idx+1)%ct.children.length;ct.children[idx].classList.add('active')},5000)}
+
+function initCarousel(n){
+    const c=document.getElementById('news-carousel');if(!c)return;
+    if(!n.length){c.innerHTML='<div class="card"><p class="muted">Sin noticias.</p></div>';return}
+    c.innerHTML=''; const ct=document.createElement('div'); ct.className='carousel-slides';
+    n.forEach((x,i)=>{
+        const s=document.createElement('div'); s.className=`carousel-slide ${i===0?'active':''}`;
+        s.style.backgroundImage=x.image?`url('${x.image}')`:'linear-gradient(135deg,#04293a,#0d5d9e)';
+        s.innerHTML=`<div class="carousel-caption"><div class="content"><h3>${escapeHtml(x.title)}</h3><small>${x.date}</small></div></div>`;
+        ct.appendChild(s);
+    });
+    c.appendChild(ct); let idx=0;
+    setInterval(()=>{ct.children[idx].classList.remove('active');idx=(idx+1)%ct.children.length;ct.children[idx].classList.add('active')},5000);
+}
+
 function openPhotoViewer(s){const p=document.getElementById('photo-viewer'),i=document.getElementById('photo-viewer-img');if(p&&i){i.src=s;p.classList.add('open')}}
-function renderMembersByRole(m){const c=document.getElementById('members-list');if(!c)return;c.innerHTML='';const q=[{title:'Presidente y Vicepresidenta',roles:['Presidente','Presidenta','Vicepresidente','Vicepresidenta','Vicepresedenta']},{title:'Logística',roles:['Logistica','Logística']},{title:'Publirelacionista',roles:['Publirelacionista','Relaciones Públicas','Relaciones Publicas']},{title:'Tesorería',roles:['Tesorero','Tesorería','Tesorera']},{title:'Secretaria',roles:['Secretaria','Secretario']},{title:'Vocales',roles:['Vocal','Vocales']},{title:'Colaboradores',roles:['Colaborador','Colaboradores']}];const cr=(x)=>{const d=document.createElement('div');d.className='member-card';const i=x.photo||"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Crect width='220' height='220' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3E👤%3C/text%3E%3C/svg%3E";d.innerHTML=`<img src="${i}" onclick="openPhotoViewer('${i}')"><div><h4>${escapeHtml(x.name)}</h4><p class="muted">${escapeHtml(x.role)}</p><p>${escapeHtml(x.email)}</p></div>`;return d};const norm=r=>(r||'').trim().toLowerCase();const u=new Set();q.forEach(g=>{const s=document.createElement('section');s.className='card quadrant';s.innerHTML=`<h3>${g.title}</h3>`;const d=document.createElement('div');d.className='quadrant-grid';const mat=m.filter(x=>g.roles.map(norm).includes(norm(x.role)));mat.forEach(x=>{d.appendChild(cr(x));u.add(x.id)});if(mat.length)s.appendChild(d);if(mat.length)c.appendChild(s)});const oth=m.filter(x=>!u.has(x.id));if(oth.length){const s=document.createElement('section');s.className='card quadrant';s.innerHTML=`<h3>Otros</h3>`;const d=document.createElement('div');d.className='quadrant-grid';oth.forEach(x=>d.appendChild(cr(x)));s.appendChild(d);c.appendChild(s)}}
+
+function renderMembersByRole(m){
+    const c=document.getElementById('members-list');if(!c)return; c.innerHTML='';
+    const q=[{title:'Presidente y Vicepresidenta',roles:['Presidente','Presidenta','Vicepresidente','Vicepresidenta','Vicepresedenta']},{title:'Logística',roles:['Logistica','Logística']},{title:'Publirelacionista',roles:['Publirelacionista','Relaciones Públicas','Relaciones Publicas']},{title:'Tesorería',roles:['Tesorero','Tesorería','Tesorera']},{title:'Secretaria',roles:['Secretaria','Secretario']},{title:'Vocales',roles:['Vocal','Vocales']},{title:'Colaboradores',roles:['Colaborador','Colaboradores']}];
+    const cr=(x)=>{
+        const d=document.createElement('div'); d.className='member-card';
+        const i=x.photo||"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Crect width='220' height='220' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3E👤%3C/text%3E%3C/svg%3E";
+        d.innerHTML=`<img src="${i}" onclick="openPhotoViewer('${i}')"><div><h4>${escapeHtml(x.name)}</h4><p class="muted">${escapeHtml(x.role)}</p><p>${escapeHtml(x.email)}</p></div>`;
+        return d;
+    };
+    const norm=r=>(r||'').trim().toLowerCase(); const u=new Set();
+    q.forEach(g=>{
+        const s=document.createElement('section'); s.className='card quadrant'; s.innerHTML=`<h3>${g.title}</h3>`;
+        const d=document.createElement('div'); d.className='quadrant-grid';
+        const mat=m.filter(x=>g.roles.map(norm).includes(norm(x.role)));
+        mat.forEach(x=>{d.appendChild(cr(x));u.add(x.id)});
+        if(mat.length){s.appendChild(d); c.appendChild(s);}
+    });
+    const oth=m.filter(x=>!u.has(x.id));
+    if(oth.length){
+        const s=document.createElement('section'); s.className='card quadrant'; s.innerHTML=`<h3>Otros</h3>`;
+        const d=document.createElement('div'); d.className='quadrant-grid';
+        oth.forEach(x=>d.appendChild(cr(x))); s.appendChild(d); c.appendChild(s);
+    }
+}
