@@ -321,29 +321,93 @@ function resetForm(pf,fds){
 }
 
 async function loadAdminLists() {
-    const d = await readData(); if(!d) return;
+    const d = await readData(); 
+    if (!d) return;
+
     const sm = document.getElementById('search-mem');
-    if (sm && !sm.dataset.l) { sm.dataset.l="1"; sm.addEventListener('input', (e) => { const t = e.target.value.toLowerCase(); renderList('member-admin-list', d.members.filter(m => m.name.toLowerCase().includes(t)), 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']); }); }
+    
+    // Configurar el buscador de miembros solo una vez
+    if (sm && !sm.dataset.l) { 
+        sm.dataset.l = "1"; 
+        sm.addEventListener('input', (e) => { 
+            const t = e.target.value.toLowerCase(); 
+            const filtered = d.members.filter(m => m.name.toLowerCase().includes(t));
+            renderList('member-admin-list', filtered, 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']); 
+        }); 
+    }
 
     const renderList = (cid, it, lbl, tb, pf, fds) => {
-        const c = document.getElementById(cid); if(!c) return; c.innerHTML = it.length ? '' : '<p class="muted">Sin registros.</p>';
+        const c = document.getElementById(cid); 
+        if (!c) return; 
+        
+        c.innerHTML = it.length ? '' : '<p class="muted">Sin registros.</p>';
+        
         it.forEach(x => {
-            const div = document.createElement('div'); div.className = 'card'; div.style.cssText = 'padding:10px 15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;';
-            let thumb = ''; if((table==='members'||table==='news') && (item.photo||item.image)) thumb = `<img src="${item.photo||item.image}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;margin-right:10px;">`;
-            div.innerHTML = `<div style="display:flex;align-items:center;">${thumb}<b>${escapeHtml(x[lbl])}</b></div><div><button class="btn edit-btn" style="padding:4px 8px;font-size:0.8rem;margin-right:5px;">✏️</button><button class="btn del-btn" style="padding:4px 8px;font-size:0.8rem;background:#d32f2f;">🗑️</button></div>`;
-            div.querySelector('.del-btn').onclick = async () => { if(confirm('¿Borrar?')) { await supabase.from(tb).delete().eq('id', x.id); loadAdminLists(); } };
+            const div = document.createElement('div'); 
+            div.className = 'card'; 
+            div.style.cssText = 'padding:10px 15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;';
+            
+            // CORRECCIÓN AQUÍ: Usamos 'tb' y 'x' en lugar de 'table' e 'item'
+            let thumb = ''; 
+            const imgPath = x.photo || x.image;
+            if ((tb === 'members' || tb === 'news') && imgPath) {
+                thumb = `<img src="${imgPath}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;margin-right:10px;">`;
+            }
+
+            div.innerHTML = `
+                <div style="display:flex;align-items:center;">
+                    ${thumb}
+                    <b>${escapeHtml(x[lbl])}</b>
+                </div>
+                <div>
+                    <button class="btn edit-btn" style="padding:4px 8px;font-size:0.8rem;margin-right:5px;">✏️</button>
+                    <button class="btn del-btn" style="padding:4px 8px;font-size:0.8rem;background:#d32f2f;">🗑️</button>
+                </div>`;
+
+            // Acción Eliminar
+            div.querySelector('.del-btn').onclick = async () => { 
+                if (confirm('¿Estás seguro de borrar este registro?')) { 
+                    const { error } = await supabase.from(tb).delete().eq('id', x.id); 
+                    if (error) alert("Error al borrar");
+                    else loadAdminLists(); // Recargar listas
+                } 
+            };
+
+            // Acción Editar
             div.querySelector('.edit-btn').onclick = () => {
-                if (tb === 'projects') loadProjectToEdit(x);
-                else { currentEditId = x.id; fds.forEach(f => { if(document.getElementById(`${pf}-${f}-url`)) document.getElementById(`${pf}-${f}-url`).value = x[f]||''; else if(document.getElementById(`${pf}-${f}`)) document.getElementById(`${pf}-${f}`).value = x[f]||''; }); const add = document.getElementById(`add-${pf}`), can = document.getElementById(`cancel-${pf}`); if(add) { add.textContent = 'Actualizar'; add.scrollIntoView({behavior:'smooth'}); } if(can) can.classList.remove('hidden'); }
+                if (tb === 'projects') {
+                    loadProjectToEdit(x);
+                } else { 
+                    currentEditId = x.id; 
+                    fds.forEach(f => { 
+                        const elUrl = document.getElementById(`${pf}-${f}-url`);
+                        const elNormal = document.getElementById(`${pf}-${f}`);
+                        if (elUrl) elUrl.value = x[f] || ''; 
+                        if (elNormal) elNormal.value = x[f] || ''; 
+                    }); 
+                    
+                    const addBtn = document.getElementById(`add-${pf}`);
+                    const canBtn = document.getElementById(`cancel-${pf}`);
+                    if (addBtn) { 
+                        addBtn.textContent = 'Actualizar'; 
+                        addBtn.scrollIntoView({ behavior: 'smooth' }); 
+                    } 
+                    if (canBtn) canBtn.classList.remove('hidden'); 
+                }
             };
             c.appendChild(div);
         });
     };
+
+    // Renderizado inicial de todas las listas
     renderList('news-admin-list', d.news, 'title', 'news', 'news', ['title', 'body', 'date', 'image']);
     renderList('event-admin-list', d.events, 'title', 'events', 'evt', ['title', 'desc', 'date']);
-    // removed service list
-    const st = sm ? sm.value.toLowerCase() : '';
-    renderList('member-admin-list', st ? d.members.filter(m => m.name.toLowerCase().includes(st)) : d.members, 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']);
+    
+    const searchVal = sm ? sm.value.toLowerCase() : '';
+    const filteredMembers = searchVal ? d.members.filter(m => m.name.toLowerCase().includes(searchVal)) : d.members;
+    renderList('member-admin-list', filteredMembers, 'name', 'members', 'mem', ['name', 'role', 'email', 'phone', 'photo']);
+    
+    // Lista de proyectos
     renderList('proj-admin-list', d.projects, 'title', 'projects', 'proj', []);
 }
 
