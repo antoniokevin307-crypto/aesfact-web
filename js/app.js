@@ -254,45 +254,74 @@ function initAdmin() {
     setupAdminListeners();
 }
 
+// --- LÓGICA DEL SWITCH DE MANTENIMIENTO (CORREGIDA) ---
 async function initMaintenanceControl() {
     const toggle = document.getElementById('maintenance-toggle');
     const text = document.getElementById('maint-status-text');
+    
+    // Seguridad: Si no existe el botón en el HTML (ej: estás en otra página), salir
     if(!toggle || !text) return;
 
-    // 1. Obtener estado actual
-    const { data } = await supabase
-        .from('site_controls')
-        .select('is_enabled')
-        .eq('control_name', 'maintenance_mode')
-        .maybeSingle();
-    
-    const isMaintained = data ? data.is_enabled : false;
-    toggle.checked = isMaintained;
-    updateMaintText(isMaintained);
+    console.log("🔄 Consultando estado del mantenimiento a Supabase...");
 
-    // 2. Escuchar cambios
+    // 1. Obtener estado actual al cargar la página
+    try {
+        const { data, error } = await supabase
+            .from('site_controls')
+            .select('*') // Traemos todo para inspeccionar
+            .eq('control_name', 'maintenance_mode')
+            .maybeSingle();
+
+        if (error) {
+            console.error("❌ Error leyendo mantenimiento:", error.message);
+        }
+
+        // Determinar si está activo (Si data existe Y is_enabled es true)
+        const isMaintained = (data && data.is_enabled === true);
+        
+        console.log("✅ Estado recibido:", isMaintained, "| Datos crudos:", data);
+
+        // Actualizar el Switch Visualmente
+        toggle.checked = isMaintained;
+        updateMaintText(isMaintained);
+
+    } catch (e) {
+        console.error("Error crítico en initMaintenanceControl:", e);
+    }
+
+    // 2. Escuchar cambios (Cuando tú le das click)
     toggle.addEventListener('change', async (e) => {
         const newState = e.target.checked;
+        
+        // Actualizar texto visualmente de inmediato (UX rápida)
         updateMaintText(newState);
+
+        console.log("Cambio detectado. Guardando nuevo estado:", newState);
 
         const { error } = await supabase
             .from('site_controls')
-            .upsert({ control_name: 'maintenance_mode', is_enabled: newState }, { onConflict: 'control_name' });
+            .update({ is_enabled: newState })
+            .eq('control_name', 'maintenance_mode'); // USAMOS UPDATE, NO UPSERT PARA MAYOR SEGURIDAD
         
         if(error) {
-            alert('Error al cambiar el estado: ' + error.message);
-            toggle.checked = !newState; 
+            alert('Error al guardar en BD: ' + error.message);
+            toggle.checked = !newState; // Regresar el botón si falló
             updateMaintText(!newState);
+        } else {
+            console.log("✅ Guardado correctamente en BD.");
         }
     });
 
+    // Función auxiliar para cambiar el texto y color
     function updateMaintText(active) {
         if(active) {
             text.textContent = "🔴 MANTENIMIENTO ACTIVO (Web Cerrada)";
             text.style.color = "#d32f2f";
+            text.style.fontWeight = "bold";
         } else {
             text.textContent = "🟢 Web Operativa (Pública)";
             text.style.color = "#2e7d32";
+            text.style.fontWeight = "bold";
         }
     }
 }
