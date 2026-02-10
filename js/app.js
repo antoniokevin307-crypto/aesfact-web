@@ -1,4 +1,4 @@
-// app.js - VERSIÓN INTEGRADA CON MANTENIMIENTO
+// app.js - VERSIÓN FINAL (CON LIMPIEZA DE STORAGE CORREGIDA)
 // ============================================================
 
 const SUPABASE_URL = 'https://yhikslflzazeodazxpyz.supabase.co';
@@ -16,18 +16,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Conectar a Supabase primero
     await initSupabase();
 
-    // 2. ¡EL GUARDIA DE SEGURIDAD! (Verificar mantenimiento ANTES de renderizar)
+    // 2. Verificar mantenimiento
     const stopRendering = await checkMaintenanceModeGuard();
-    if (stopRendering) return; // Si el guardia dice "alto", no cargamos la web
+    if (stopRendering) return; 
 
-    // 3. Si pasamos el guardia, cargamos la web normal
+    // 3. Cargar web normal
     await renderPublic(); 
     bindSidebar();
     renderNav();
     bindContact();
     bindNewsModal();
     
-    // 4. Si es la página de admin, iniciamos su lógica
+    // 4. Si es admin, iniciar lógica
     if (document.body.classList.contains('admin')) initAdmin();
 });
 
@@ -39,20 +39,16 @@ async function initSupabase() {
     } else console.error('❌ Librería Supabase no encontrada');
 }
 
-// --- LÓGICA DEL GUARDIA (NUEVO) ---
-// --- LÓGICA DEL GUARDIA (CORREGIDO) ---
+// --- LÓGICA DEL GUARDIA ---
 async function checkMaintenanceModeGuard() {
     const path = window.location.pathname;
 
-    // 1. EXCEPCIONES: Páginas que SIEMPRE se pueden ver
-    // Agregamos 'admin.html' aquí para que te deje entrar a poner la contraseña
     if (path.includes('mantenimiento.html') || 
         path.includes('login.html') || 
-        path.includes('admin.html')) { // <--- ¡ESTO ES LO QUE FALTABA!
-        return false; // Dejar pasar sin verificar nada más
+        path.includes('admin.html')) { 
+        return false; 
     }
 
-    // Consultar estado en Supabase
     try {
         const { data, error } = await supabase
             .from('site_controls')
@@ -60,27 +56,22 @@ async function checkMaintenanceModeGuard() {
             .eq('control_name', 'maintenance_mode')
             .maybeSingle();
 
-        // Si hay error o no existe, asumimos que está ABIERTO (false)
         const isMaintenanceOn = data ? data.is_enabled : false;
 
         if (isMaintenanceOn) {
-            // Verificar si soy ADMIN (usando tu lógica de sessionStorage)
             const isAdmin = sessionStorage.getItem('aesfact_session') === 'active';
             
             if (isAdmin) {
-                console.log('🛡️ Mantenimiento ACTIVO, pero eres Admin. Pase usted.');
+                console.log('🛡️ Mantenimiento ACTIVO (Admin Acceso).');
                 mostrarAvisoAdmin(); 
-                return false; // Permitir carga
+                return false; 
             } else {
-                console.warn('⛔ Mantenimiento ACTIVO. Redirigiendo...');
                 window.location.href = 'mantenimiento.html';
-                return true; // DETENER carga
+                return true; 
             }
         }
-    } catch (e) {
-        console.error('Error verificando mantenimiento:', e);
-    }
-    return false; // Todo normal, continuar
+    } catch (e) { console.error(e); }
+    return false; 
 }
 
 function mostrarAvisoAdmin() {
@@ -100,29 +91,46 @@ function setupRealtime() {
     }).subscribe();
 }
 
-// --- UTILIDADES DE STORAGE ---
+// --- UTILIDADES DE STORAGE (CORREGIDAS) ---
 
 async function uploadImageToStorage(file, folderName) {
     try {
+        // Limpiamos el nombre para evitar caracteres raros
         const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '_').toLowerCase();
         const filePath = `${folderName}/${Date.now()}_${cleanName}`;
+        
         const { data, error } = await supabase.storage.from('media').upload(filePath, file, { cacheControl: '3600', upsert: false });
         if (error) throw error;
+        
         const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(filePath);
         return publicUrl;
     } catch (e) { console.error(e); alert('Error subiendo imagen'); return null; }
 }
 
 function getFilePathFromUrl(url) {
+    // Verifica si la URL pertenece a tu bucket 'media'
     if (!url || !url.includes('/storage/v1/object/public/media/')) return null;
-    return url.split('/storage/v1/object/public/media/')[1];
+    
+    // Extrae la parte después de 'media/'
+    const path = url.split('/storage/v1/object/public/media/')[1];
+    
+    // IMPORTANTE: Decodificar la URL (ej: convertir %20 en espacios)
+    return decodeURIComponent(path);
 }
 
 async function deleteFileFromStorage(url) {
     const path = getFilePathFromUrl(url);
     if (path) {
-        await supabase.storage.from('media').remove([path]);
-        console.log('Archivo eliminado del storage:', path);
+        // Intentar borrar del bucket 'media'
+        const { error } = await supabase.storage.from('media').remove([path]);
+        
+        if (error) {
+            console.error('Error borrando archivo de storage:', error.message);
+        } else {
+            console.log('✅ Archivo eliminado correctamente del storage:', path);
+        }
+    } else {
+        console.warn('No se pudo extraer el path del archivo (quizás es externo):', url);
     }
 }
 
@@ -175,7 +183,7 @@ async function renderPublic() {
     initCarousel(data.news.slice(0,5));
     const gl=document.getElementById('gallery-list');if(gl){gl.innerHTML='';data.gallery.forEach(i=>{const d=document.createElement('div');d.className='gallery-item';d.innerHTML=`<img src="${i}" onclick="openPhotoViewer('${i}')">`;gl.appendChild(d)})}
 
-    // PROYECTOS (VISTA PÚBLICA)
+    // PROYECTOS
     const pl=document.getElementById('projects-list-container')||document.getElementById('projects-list');
     if(pl){
         pl.innerHTML='';
@@ -254,65 +262,49 @@ function initAdmin() {
     setupAdminListeners();
 }
 
-// --- LÓGICA DEL SWITCH DE MANTENIMIENTO (CORREGIDA) ---
+// --- LÓGICA DEL SWITCH DE MANTENIMIENTO ---
 async function initMaintenanceControl() {
     const toggle = document.getElementById('maintenance-toggle');
     const text = document.getElementById('maint-status-text');
-    
-    // Seguridad: Si no existe el botón en el HTML (ej: estás en otra página), salir
     if(!toggle || !text) return;
 
-    console.log("🔄 Consultando estado del mantenimiento a Supabase...");
+    console.log("🔄 Consultando mantenimiento...");
 
-    // 1. Obtener estado actual al cargar la página
     try {
         const { data, error } = await supabase
             .from('site_controls')
-            .select('*') // Traemos todo para inspeccionar
+            .select('*')
             .eq('control_name', 'maintenance_mode')
             .maybeSingle();
 
-        if (error) {
-            console.error("❌ Error leyendo mantenimiento:", error.message);
-        }
+        if (error) console.error("❌ Error leyendo mantenimiento:", error.message);
 
-        // Determinar si está activo (Si data existe Y is_enabled es true)
         const isMaintained = (data && data.is_enabled === true);
         
-        console.log("✅ Estado recibido:", isMaintained, "| Datos crudos:", data);
-
-        // Actualizar el Switch Visualmente
         toggle.checked = isMaintained;
         updateMaintText(isMaintained);
 
-    } catch (e) {
-        console.error("Error crítico en initMaintenanceControl:", e);
-    }
+    } catch (e) { console.error("Error crítico initMaintenanceControl:", e); }
 
-    // 2. Escuchar cambios (Cuando tú le das click)
     toggle.addEventListener('change', async (e) => {
         const newState = e.target.checked;
-        
-        // Actualizar texto visualmente de inmediato (UX rápida)
         updateMaintText(newState);
-
-        console.log("Cambio detectado. Guardando nuevo estado:", newState);
+        console.log("Cambio detectado. Guardando:", newState);
 
         const { error } = await supabase
             .from('site_controls')
             .update({ is_enabled: newState })
-            .eq('control_name', 'maintenance_mode'); // USAMOS UPDATE, NO UPSERT PARA MAYOR SEGURIDAD
+            .eq('control_name', 'maintenance_mode'); 
         
         if(error) {
             alert('Error al guardar en BD: ' + error.message);
-            toggle.checked = !newState; // Regresar el botón si falló
+            toggle.checked = !newState;
             updateMaintText(!newState);
         } else {
-            console.log("✅ Guardado correctamente en BD.");
+            console.log("✅ Guardado correctamente.");
         }
     });
 
-    // Función auxiliar para cambiar el texto y color
     function updateMaintText(active) {
         if(active) {
             text.textContent = "🔴 MANTENIMIENTO ACTIVO (Web Cerrada)";
