@@ -1,4 +1,4 @@
-// app.js - VERSIÓN FINAL CORREGIDA
+// app.js - VERSIÓN INTEGRADA CON MANTENIMIENTO
 // ============================================================
 
 const SUPABASE_URL = 'https://yhikslflzazeodazxpyz.supabase.co';
@@ -9,14 +9,25 @@ let currentEditId = null;
 let tempParticipants = [];
 let tempGallery = [];
 
+// --- INICIO PRINCIPAL ---
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Iniciando AESFACT App Pro...');
+    console.log('🚀 Iniciando AESFACT App...');
+    
+    // 1. Conectar a Supabase primero
     await initSupabase();
+
+    // 2. ¡EL GUARDIA DE SEGURIDAD! (Verificar mantenimiento ANTES de renderizar)
+    const stopRendering = await checkMaintenanceModeGuard();
+    if (stopRendering) return; // Si el guardia dice "alto", no cargamos la web
+
+    // 3. Si pasamos el guardia, cargamos la web normal
     await renderPublic(); 
     bindSidebar();
     renderNav();
     bindContact();
     bindNewsModal();
+    
+    // 4. Si es la página de admin, iniciamos su lógica
     if (document.body.classList.contains('admin')) initAdmin();
 });
 
@@ -26,6 +37,57 @@ async function initSupabase() {
         console.log('✅ Supabase conectado');
         setupRealtime();
     } else console.error('❌ Librería Supabase no encontrada');
+}
+
+// --- LÓGICA DEL GUARDIA (NUEVO) ---
+// --- LÓGICA DEL GUARDIA (CORREGIDO) ---
+async function checkMaintenanceModeGuard() {
+    const path = window.location.pathname;
+
+    // 1. EXCEPCIONES: Páginas que SIEMPRE se pueden ver
+    // Agregamos 'admin.html' aquí para que te deje entrar a poner la contraseña
+    if (path.includes('mantenimiento.html') || 
+        path.includes('login.html') || 
+        path.includes('admin.html')) { // <--- ¡ESTO ES LO QUE FALTABA!
+        return false; // Dejar pasar sin verificar nada más
+    }
+
+    // Consultar estado en Supabase
+    try {
+        const { data, error } = await supabase
+            .from('site_controls')
+            .select('is_enabled')
+            .eq('control_name', 'maintenance_mode')
+            .maybeSingle();
+
+        // Si hay error o no existe, asumimos que está ABIERTO (false)
+        const isMaintenanceOn = data ? data.is_enabled : false;
+
+        if (isMaintenanceOn) {
+            // Verificar si soy ADMIN (usando tu lógica de sessionStorage)
+            const isAdmin = sessionStorage.getItem('aesfact_session') === 'active';
+            
+            if (isAdmin) {
+                console.log('🛡️ Mantenimiento ACTIVO, pero eres Admin. Pase usted.');
+                mostrarAvisoAdmin(); 
+                return false; // Permitir carga
+            } else {
+                console.warn('⛔ Mantenimiento ACTIVO. Redirigiendo...');
+                window.location.href = 'mantenimiento.html';
+                return true; // DETENER carga
+            }
+        }
+    } catch (e) {
+        console.error('Error verificando mantenimiento:', e);
+    }
+    return false; // Todo normal, continuar
+}
+
+function mostrarAvisoAdmin() {
+    const banner = document.createElement('div');
+    banner.style.cssText = "position:fixed; top:0; left:0; width:100%; background:#d32f2f; color:white; text-align:center; padding:5px; z-index:9999; font-size:12px; font-weight:bold;";
+    banner.textContent = "⚠ MODO MANTENIMIENTO ACTIVO (Solo tú puedes ver esto)";
+    document.body.appendChild(banner);
 }
 
 function setupRealtime() {
@@ -175,12 +237,64 @@ function initAdmin() {
         const p = document.getElementById('admin-pass').value.trim();
         if(AUTHS.some(x=>x.u===u && x.p===p)) {
             sessionStorage.setItem('aesfact_session', 'active');
-            toggleAdmin(true); loadAdminData(); loadAdminLists();
+            toggleAdmin(true); 
+            loadAdminData(); 
+            loadAdminLists();
+            initMaintenanceControl(); 
         } else alert('Credenciales incorrectas');
     });
     document.getElementById('logout-btn')?.addEventListener('click',()=>{sessionStorage.removeItem('aesfact_session');location.reload()});
-    if(sessionStorage.getItem('aesfact_session')==='active'){toggleAdmin(true);loadAdminData();loadAdminLists();}
+    
+    if(sessionStorage.getItem('aesfact_session')==='active'){
+        toggleAdmin(true);
+        loadAdminData();
+        loadAdminLists();
+        initMaintenanceControl(); 
+    }
     setupAdminListeners();
+}
+
+async function initMaintenanceControl() {
+    const toggle = document.getElementById('maintenance-toggle');
+    const text = document.getElementById('maint-status-text');
+    if(!toggle || !text) return;
+
+    // 1. Obtener estado actual
+    const { data } = await supabase
+        .from('site_controls')
+        .select('is_enabled')
+        .eq('control_name', 'maintenance_mode')
+        .maybeSingle();
+    
+    const isMaintained = data ? data.is_enabled : false;
+    toggle.checked = isMaintained;
+    updateMaintText(isMaintained);
+
+    // 2. Escuchar cambios
+    toggle.addEventListener('change', async (e) => {
+        const newState = e.target.checked;
+        updateMaintText(newState);
+
+        const { error } = await supabase
+            .from('site_controls')
+            .upsert({ control_name: 'maintenance_mode', is_enabled: newState }, { onConflict: 'control_name' });
+        
+        if(error) {
+            alert('Error al cambiar el estado: ' + error.message);
+            toggle.checked = !newState; 
+            updateMaintText(!newState);
+        }
+    });
+
+    function updateMaintText(active) {
+        if(active) {
+            text.textContent = "🔴 MANTENIMIENTO ACTIVO (Web Cerrada)";
+            text.style.color = "#d32f2f";
+        } else {
+            text.textContent = "🟢 Web Operativa (Pública)";
+            text.style.color = "#2e7d32";
+        }
+    }
 }
 
 function toggleAdmin(show){
@@ -379,13 +493,11 @@ async function loadAdminLists() {
             
             div.querySelector('.del-btn').onclick = async () => { 
                 if(confirm('¿Borrar este registro y sus archivos permanentemente?')) { 
-                    // Borrar archivos del storage primero
                     if(x.image) await deleteFileFromStorage(x.image);
                     if(x.photo) await deleteFileFromStorage(x.photo);
                     if(x.gallery && Array.isArray(x.gallery)) {
                         for(let url of x.gallery) await deleteFileFromStorage(url);
                     }
-                    // Borrar de la base de datos
                     await supabase.from(tb).delete().eq('id', x.id); 
                     loadAdminLists(); 
                 } 
@@ -430,7 +542,15 @@ function bindSidebar() {
 
 function renderNav() { 
     const n=document.getElementById('sidebar-nav'); if(!n)return; 
-    const l=[{t:'Inicio',h:'index.html'},{t:'Nosotros',h:'about.html'},{t:'Proyectos',h:'projects.html'},{t:'Eventos',h:'events.html'},{t:'Noticias',h:'news.html'},{t:'Galería',h:'gallery.html'},{t:'Integrantes',h:'members.html'},{t:'Contacto',h:'contact.html'}]; 
+    const l=[{t:'Inicio',h:'index.html'},
+        {t:'Nosotros',h:'about.html'},
+        {t:'Proyectos',h:'projects.html'},
+        {t:'Eventos',h:'events.html'},
+        {t:'Noticias',h:'news.html'},
+        {t:'Transparencia', h:'transparencia.html'},
+        {t:'Galería',h:'gallery.html'},
+        {t:'Integrantes',h:'members.html'},
+        {t:'Contacto',h:'contact.html'}]; 
     n.innerHTML=''; l.forEach(i=>{const a=document.createElement('a');a.href=i.h;a.textContent=i.t;if(location.pathname.includes(i.h))a.classList.add('active');n.appendChild(a)}); 
 }
 

@@ -21,6 +21,46 @@
       70% { box-shadow: 0 0 0 10px rgba(13, 93, 158, 0); }
       100% { box-shadow: 0 0 0 0 rgba(13, 93, 158, 0); }
     }
+    /* Estilos para el Switch de Mantenimiento */
+    .switch-container {
+        display: flex;
+        align-items: center;
+        background: #fff3e0; /* Naranja muy suave */
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #ffe0b2;
+        margin-bottom: 20px;
+    }
+    .switch-label {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+        margin-right: 15px;
+    }
+    .switch-label input { opacity: 0; width: 0; height: 0; }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #d32f2f; } /* Rojo cuando está activo (PELIGRO/MANTENIMIENTO) */
+    input:checked + .slider:before { transform: translateX(26px); }
+    #maint-status-text { font-weight: bold; color: #555; }
   </style>
 </head>
 <body class="admin">
@@ -36,6 +76,17 @@
     </div>
 
     <div id="admin-panel" class="hidden">
+      
+      <div class="switch-container">
+        <label class="switch-label">
+          <input type="checkbox" id="maintenance-toggle">
+          <span class="slider"></span>
+        </label>
+        <div>
+            <div style="font-size: 0.85rem; text-transform: uppercase; color: #e65100; font-weight: bold;">Control de Sitio</div>
+            <span id="maint-status-text">Web Operativa (Pública)</span>
+        </div>
+      </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="margin:0;">Dashboard</h2>
         <button id="logout-btn" class="btn muted">Salir</button>
@@ -47,6 +98,7 @@
           <a href="#sec-projects">Proyectos</a>
           <a href="#sec-events">Eventos</a>
           <a href="#sec-news">Noticias</a>
+          <a href="finanzas.html" style="background-color: #e8f5e9; color: #2e7d32; font-weight: bold;">💰 Gestión Financiera</a>
           <a href="#sec-members">Integrantes</a>
           <a href="#sec-aesfact">AESFACT</a>
         </nav>
