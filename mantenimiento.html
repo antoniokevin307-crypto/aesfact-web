@@ -3,63 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mantenimiento - AESFACT</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>¡Nos Mudamos! - AESFACT</title>
     <style>
+        :root {
+            --blue-accent: #013a63;
+            --blue-light: #0d5d9e;
+            --bg-color: #f5f8fb;
+        }
+        
         body {
             margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--blue-accent), var(--blue-light));
             height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .maint-card {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            justify-content: center;
+            color: #ffffff;
             text-align: center;
+            overflow: hidden;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             max-width: 500px;
             width: 90%;
-            border-top: 5px solid #d32f2f;
+            animation: floatUp 0.8s ease-out forwards;
         }
-        .maint-icon {
-            font-size: 4rem;
+
+        .icon {
+            font-size: 5rem;
             margin-bottom: 20px;
-            display: block;
+            animation: liftoff 2s infinite alternate ease-in-out;
+            display: inline-block;
         }
-        h1 { color: #333; margin-bottom: 10px; font-size: 1.8rem; }
-        p { color: #666; line-height: 1.6; margin-bottom: 30px; }
-        .logo-preview {
-            max-width: 120px;
-            margin-bottom: 20px;
+
+        h1 {
+            font-size: 2.2rem;
+            margin: 0 0 15px 0;
+            font-weight: 800;
+            letter-spacing: 1px;
         }
-        .admin-link {
-            color: #bbb;
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .btn {
+            display: inline-block;
+            background: #ffffff;
+            color: var(--blue-accent);
             text-decoration: none;
-            font-size: 0.8rem;
-            margin-top: 20px;
-            display: block;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .admin-link:hover { color: #0d5d9e; text-decoration: underline; }
+
+        .btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3);
+            background: #f0f0f0;
+        }
+
+        .countdown-text {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #timer {
+            font-weight: bold;
+            color: #ffcc00;
+            font-size: 1.1rem;
+        }
+
+        /* Animaciones */
+        @keyframes floatUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes liftoff {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-15px); }
+        }
     </style>
 </head>
 <body>
-    <div class="maint-card">
-        <img src="img/Logo.jpg" onerror="this.style.display='none'" class="logo-preview" alt="AESFACT">
-        <span class="maint-icon">🛠️</span>
-        
-        <h1>Sitio en Mantenimiento</h1>
-        <p>Estamos realizando mejoras importantes en la plataforma de <b>AESFACT</b> para brindarte un mejor servicio.</p>
-        <p>Por favor, intenta acceder nuevamente más tarde.</p>
-        
-        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-            <small style="color: #999;">AESFACT &copy; 2026</small>
-        </div>
 
-        <a href="admin.html" class="admin-link">Acceso Administrativo</a>
+    <div class="container">
+        <div class="icon">🚀</div>
+        <h1>¡AESFACT ha evolucionado!</h1>
+        <p>Hemos construido una plataforma completamente nueva, más rápida y moderna para toda nuestra comunidad estudiantil.</p>
+        
+        <a href="https://aesfact.github.io/aesfact-web2/" class="btn" id="redirect-btn">Ir al Nuevo Sitio</a>
+
+        <div class="countdown-text">
+            Serás redirigido automáticamente en <span id="timer">10</span> segundos...
+        </div>
     </div>
+
+    <script>
+        // 1. Pon aquí el enlace de tu nueva página web
+        const NUEVA_WEB = "https://aesfact.github.io/aesfact-web2/"; 
+        
+        let segundosRestantes = 10;
+        const timerElement = document.getElementById('timer');
+        const btnElement = document.getElementById('redirect-btn');
+
+        // Asegurar que el botón también apunte al lugar correcto dinámicamente
+        btnElement.href = NUEVA_WEB;
+
+        // 2. Iniciar el contador regresivo
+        const intervalo = setInterval(() => {
+            segundosRestantes--;
+            timerElement.textContent = segundosRestantes;
+
+            if (segundosRestantes <= 0) {
+                clearInterval(intervalo);
+                window.location.href = NUEVA_WEB; // Teletransporte automático
+            }
+        }, 1000); // 1000 milisegundos = 1 segundo
+    </script>
+
 </body>
 </html>
